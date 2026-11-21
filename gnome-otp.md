@@ -28,7 +28,7 @@ app shows a single code that unlocks both.
 The key line in `/etc/pam.d/gdm-password`:
 
 ```
-auth	required	pam_google_authenticator.so
+auth	required	pam_google_authenticator.so nullok
 ```
 
 placed **after** `@include common-auth`:
@@ -36,12 +36,16 @@ placed **after** `@include common-auth`:
 ```
 auth    requisite       pam_nologin.so
 auth	required	pam_succeed_if.so user != root quiet_success
-@include common-auth                        # password check
-auth	required	pam_google_authenticator.so   # OTP check  <-- added
+@include common-auth                                  # password check
+auth	required	pam_google_authenticator.so nullok   # OTP check  <-- added
 auth    optional        pam_gnome_keyring.so
 ```
 
-`required` means password **and** OTP must both succeed.
+`required` means the password **and** the OTP must both succeed. The `nullok`
+flag makes the module say "IGNORE" for users who have **no**
+`~/.google_authenticator` file — those users log in with their password alone.
+Users **with** a secret file must enter a correct code. This keeps existing
+accounts working while OTP is enforced only on users who have enrolled.
 
 ---
 
@@ -50,8 +54,8 @@ auth    optional        pam_gnome_keyring.so
 ```bash
 chmod +x setup-gnome-otp.sh
 
-./setup-gnome-otp.sh            # every user must have a secret
-./setup-gnome-otp.sh nullok     # only users WITH a secret are prompted
+./setup-gnome-otp.sh            # nullok (DEFAULT): only users WITH a secret are prompted
+./setup-gnome-otp.sh required   # strict: every user must have a secret
 ```
 
 > If `~/.google_authenticator` already exists (e.g. from `setup-ssh-otp.sh`),
@@ -98,8 +102,8 @@ Scan the QR into your phone app and save the printed scratch codes.
 # back up first
 sudo cp -a /etc/pam.d/gdm-password /etc/pam.d/gdm-password.bak.$(date +%s)
 
-# insert the OTP line right after the password check
-sudo sed -i '/^@include common-auth$/a auth required pam_google_authenticator.so' /etc/pam.d/gdm-password
+# insert the OTP line right after the password check (nullok = only users with a secret)
+sudo sed -i '/^@include common-auth$/a auth required pam_google_authenticator.so nullok' /etc/pam.d/gdm-password
 ```
 
 Verify:
@@ -182,15 +186,16 @@ sudo sed -i '/pam_google_authenticator\.so/d' /etc/pam.d/gdm-password
   journalctl -u gdm -b | grep -i pam_google
   ```
 
-### 6.3 Only some users should need OTP
-Use `nullok`. Users without `~/.google_authenticator` fall back to
-password-only; users with the file must supply a code:
+### 6.3 OTP only for users who already enrolled
+Use `nullok` (the default). Users without `~/.google_authenticator` fall back
+to password-only; users with the file must supply a code:
 
 ```
 auth	required	pam_google_authenticator.so nullok
 ```
 
-Plain `required` (the default) means **every** GNOME user must have enrolled.
+Plain `required` (strict mode) means **every** GNOME user must have enrolled
+— a user without a secret file is then rejected.
 
 ### 6.4 Code always "wrong"
 - Check clocks — TOTP is time-based:

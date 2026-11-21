@@ -3,8 +3,8 @@
 # Enable TOTP (Google Authenticator) for GNOME (GDM) login on Ubuntu / Debian.
 #
 # Usage:
-#   ./setup-gnome-otp.sh           # every user needs a secret (required)
-#   ./setup-gnome-otp.sh nullok    # only users WITH a secret are prompted (opt-in)
+#   ./setup-gnome-otp.sh            # nullok (DEFAULT, safe): only users WITH a secret are prompted
+#   ./setup-gnome-otp.sh required   # strict: every user must have a secret
 #
 # If ~/.google_authenticator already exists (e.g. from setup-ssh-otp.sh), it is
 # REUSED so SSH and GNOME share one authenticator entry. A new secret is only
@@ -12,10 +12,10 @@
 #
 set -euo pipefail
 
-MODE="${1:-required}"
+MODE="${1:-nullok}"
 case "$MODE" in
-  required|nullok) ;;
-  *) echo "usage: $0 {required|nullok}" >&2; exit 1 ;;
+  nullok|required) ;;
+  *) echo "usage: $0 {nullok|required}" >&2; exit 1 ;;
 esac
 
 USER_TO_SETUP="${SUDO_USER:-$USER}"

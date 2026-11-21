@@ -28,8 +28,8 @@ Tested on **Ubuntu 26.04 LTS / GDM3 / GNOME Shell (Wayland)**.
 ```bash
 chmod +x setup-gnome-otp.sh
 
-./setup-gnome-otp.sh            # every user must have a secret
-./setup-gnome-otp.sh nullok     # only users WITH a secret are prompted
+./setup-gnome-otp.sh            # nullok (DEFAULT): only users WITH a secret are prompted
+./setup-gnome-otp.sh required   # strict: every user must have a secret
 ```
 
 > If `~/.google_authenticator` already exists (e.g. from SSH OTP), the script
@@ -44,8 +44,13 @@ followed by the 6-digit code.
 
 | Mode | GNOME asks for | Who is affected |
 |------|----------------|-----------------|
-| `required` (default) | password, then 6-digit code | every user |
-| `nullok` | password, then code | only users with a `~/.google_authenticator` file |
+| `nullok` (default) | password, then code | only users with a `~/.google_authenticator` file |
+| `required` | password, then 6-digit code | every user |
+
+The default (`nullok`) is the safe choice: users who haven't set up OTP keep
+logging in with just their password, so nothing breaks for existing accounts.
+Users who **do** have a `~/.google_authenticator` file are required to enter
+their code.
 
 ## What the script does
 
@@ -53,8 +58,8 @@ followed by the 6-digit code.
 2. Generates your TOTP secret **only if** `~/.google_authenticator` is missing
    (otherwise reuses the existing one — shared with SSH)
 3. Backs up `/etc/pam.d/gdm-password`
-4. Inserts `auth required pam_google_authenticator.so` after the password check
-   (`@include common-auth`)
+4. Inserts `auth required pam_google_authenticator.so nullok` (or plain
+   `required` in strict mode) after the password check (`@include common-auth`)
 5. Prints the resulting auth stack
 
 No GDM restart is required — the change is read on the next login.
